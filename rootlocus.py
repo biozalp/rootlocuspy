@@ -51,103 +51,86 @@ def parse_latex_tf(latex_str):
         sys.exit(1)
 
 def plot_root_locus(num_coeffs, den_coeffs):
+    # Create the transfer function
     sys_tf = TransferFunction(num_coeffs, den_coeffs)
     
+    # Create a new figure with a good size
     plt.figure(figsize=(10, 8))
     
-
+    # Get poles and zeros
     from control.matlab import pzmap
     poles, zeros = pzmap(sys_tf, plot=False)
     
-
+    # Set up the grid first
     plt.grid(True, linestyle='-', alpha=0.5)
     plt.axhline(y=0, color='k', linestyle='-', alpha=0.7)
     plt.axvline(x=0, color='k', linestyle='-', alpha=0.7)
     plt.minorticks_on()
     plt.grid(which='minor', linestyle=':', alpha=0.3)
     
-
-    from control import root_locus
+    # Use a direct approach with control.matlab functions
+    from control.matlab import rlocus
     
-
-    fig = plt.gcf()
-    ax = fig.gca()
+    # Calculate and plot the root locus
+    # This will draw the lines directly
+    rlocus(sys_tf)
     
-
-    from control.rlocus import root_locus_map
+    # Get the current axes
+    ax = plt.gca()
     
-
-    try:
-
-        from control.rlocus import root_locus_map
-        kvect = np.logspace(-2, 2, 1000)  # from 0.01 to 100
-        clist, rlist = root_locus_map(sys_tf, kvect)
-        
-
-        for i in range(rlist.shape[1]):
-
-            trajectory = rlist[:, i]
-            
-
-            plt.plot(trajectory.real, trajectory.imag, '-', linewidth=2, color='blue')
-            
-
-            indices = np.linspace(0, len(trajectory)-1, 10, dtype=int)
-            plt.plot(trajectory[indices].real, trajectory[indices].imag, 'bo', markersize=4)
-    except:
-
-
-        root_locus(sys_tf)
-        
-
-        for line in ax.get_lines():
-
-            if line.get_color() == 'b' and line.get_marker() == '' and line.get_linestyle() == '-':
-                line.set_linewidth(2)
-                line.set_visible(True)
+    # Turn off equal aspect ratio to fix scaling issues
+    ax.set_aspect('auto')
     
-
+    # Make sure the root locus lines are visible and thick enough
+    for line in ax.get_lines():
+        # If it's a root locus line (blue line)
+        if line.get_color() == 'b':
+            line.set_linewidth(2)  # Make lines thicker
+            line.set_visible(True)  # Ensure it's visible
+    
+    # Plot poles and zeros with clear markers
     plt.plot(np.real(poles), np.imag(poles), 'rx', markersize=10, label='Poles')
     if len(zeros) > 0:
         plt.plot(np.real(zeros), np.imag(zeros), 'go', markersize=10, label='Zeros')
     
-
-    plt.plot([], [], 'b-', linewidth=2, label='Root Locus')
+    # Add a legend
     plt.legend(fontsize=10)
     
-
+    # Add title and labels
     plt.title('Root Locus Plot', fontsize=14, fontweight='bold')
     plt.xlabel('Real Axis', fontsize=12)
     plt.ylabel('Imaginary Axis', fontsize=12)
     
-    # Get and plot poles and zeros
-    from control.matlab import pzmap
-    poles, zeros = pzmap(sys_tf, plot=False)
+    # Calculate reasonable axis limits
+    all_points = np.concatenate([poles, zeros]) if len(zeros) > 0 else poles
+    if len(all_points) > 0:
+        real_vals = np.real(all_points)
+        imag_vals = np.imag(all_points)
+        
+        # Get min/max with padding
+        real_min, real_max = real_vals.min(), real_vals.max()
+        imag_min, imag_max = imag_vals.min(), imag_vals.max()
+        
+        # Add padding (50% on each side)
+        real_range = real_max - real_min
+        imag_range = imag_max - imag_min
+        
+        # Handle cases where all points are at the same location
+        real_padding = max(real_range * 0.5, 2.0) if real_range > 0 else 2.0
+        imag_padding = max(imag_range * 0.5, 2.0) if imag_range > 0 else 2.0
+        
+        # Set limits with padding
+        plt.xlim(real_min - real_padding, real_max + real_padding)
+        plt.ylim(imag_min - imag_padding, imag_max + imag_padding)
+    else:
+        # Default limits if no poles or zeros
+        plt.xlim(-5, 5)
+        plt.ylim(-5, 5)
     
-
-    plt.plot(np.real(poles), np.imag(poles), 'rx', markersize=10, label='Poles')
-    if len(zeros) > 0:
-        plt.plot(np.real(zeros), np.imag(zeros), 'go', markersize=10, label='Zeros')
+    # Adjust layout
+    plt.tight_layout()
     
-    plt.title('Root Locus Plot', fontsize=14, fontweight='bold')
-    plt.xlabel('Real Axis', fontsize=12)
-    plt.ylabel('Imaginary Axis', fontsize=12)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.axhline(y=0, color='k', linestyle='-', alpha=0.5)
-    plt.axvline(x=0, color='k', linestyle='-', alpha=0.5)
-    plt.legend(fontsize=10)
-    
-    # Set equal aspect ratio for better visualization
-    plt.axis('equal')
-    
-    # Add minor gridlines for more detailed grid
-    plt.minorticks_on()
-    plt.grid(which='minor', linestyle=':', alpha=0.4)
-    
-
-    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-    
-
+    # Show the plot
     plt.show(block=True)
 
 def main():
